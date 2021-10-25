@@ -17,14 +17,11 @@ def main():
     rolesDropdown.click()
     driver.implicitly_wait(30)
 
-    rolesList = driver.find_element(by="xpath", value="/html/body/div[2]/div[1]/div[1]/div[1]/div/div")
-    # SWE = rolesList.find_elements(by="tag", value="label")
-    # for element in  SWE:
-    #    print(element.text)
-    #    print(element.tag_name)
-    #    print(element.parent)
-    #    print(element.location)
-    #    print(element.size)
+    # Select Software Engineer and click out of dropdown
+    SWE = driver.find_element(by="xpath", value="/html/body/div[2]/div[1]/div[1]/div[1]/div/div/div[1]/label/input")
+    SWE.click()
+    driver.implicitly_wait(30)
+    rolesDropdown.click()
 
 
 if __name__ == '__main__':
