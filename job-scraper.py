@@ -1,6 +1,8 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+import requests
 from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
 
 
 def main():
@@ -10,6 +12,7 @@ def main():
     options.add_experimental_option("detach", True)
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    driver.maximize_window()
     driver.get(URL)
 
     # Filter by Software Engineer
@@ -22,6 +25,20 @@ def main():
     SWE.click()
     driver.implicitly_wait(30)
     rolesDropdown.click()
+
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+
+    table = soup.find("table", attrs={"class": "hiring-companies-table"})
+    for row in table.find_all("tr")[1:2]:
+        company = row.find("th").text.strip()
+
+        data = row.find_all("td")[1:]
+        locations = data[0].text.strip()
+        date = data[1].text.strip()
+        url = data[2].find("a")['href']
+
+        if company:
+            print("Company: {} \tLocations: {} \tDate: {} \tLink: {}".format(company, locations, date, url))
 
 
 if __name__ == '__main__':
