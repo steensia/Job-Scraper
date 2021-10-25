@@ -3,6 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
+import pandas as pd
 
 
 # TODO: Create class and methods for readability
@@ -34,16 +35,21 @@ def main():
     # Retrieve the table of job listings
     table = soup.find("table", attrs={"class": "hiring-companies-table"})
 
-    # Iterate through each row and grab data
-    for row in table.find_all("tr")[1:5]:
+    jobs = []
+    # Iterate through each row and grab data except column headers row
+    for row in table.find_all("tr")[1:]:
         # Extract valid job listing values, otherwise ignore
         try:
             company = row.find("th").text.strip()
         except:
             continue
 
-        data = row.find_all("td")[1:20]
+        data = row.find_all("td")[1:]
         locations = data[0].text.strip()
+
+        # Show new job listings in Utah or Remote only
+        if not any(location in locations.split(' ') for location in ["UT", "Remote"]):
+            continue
 
         # Parse out date and format to mm/dd/yyyy
         split_date = data[1].text.strip().split(' ')
@@ -56,11 +62,19 @@ def main():
         url = data[2].find("a")['href']
 
         # Only show new job listings
-        if date >= today:
-            print("Company: {} \tLocations: {} \tDate: {} \tLink: {}"
-                  .format(company, locations, datetime.strftime(date, "%m/%d/%Y"), url))
+        if date >= today - timedelta(12):
+            jobs.append([company, datetime.strftime(date, "%m/%d/%Y"), url])
+
+    # Dispose chrome browser after scraping data
+    driver.quit()
 
     # TODO: Perform data export
+    pd.set_option('display.max_rows', 500)
+    pd.set_option('display.max_columns', 500)
+    pd.set_option('display.width', 1000)
+
+    df = pd.DataFrame(jobs, columns=["Company", "Date", "Link/Email"])
+    print(df)
 
 
 if __name__ == '__main__':
