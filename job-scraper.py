@@ -53,16 +53,18 @@ def main():
 
         # Parse out date and format to mm/dd/yyyy
         split_date = data[1].text.strip().split(' ')
+
         month = datetime.strptime(split_date[0], '%b').month
         day = int(split_date[1])
+        year = int(split_date[2]) if len(split_date) > 2 else datetime.today().year
 
-        date = datetime(year=datetime.today().year, month=month, day=day)
-        today = datetime.combine(datetime.today(), datetime.min.time())
+        date = datetime(year=year, month=month, day=day)
+        today = datetime.combine(datetime.today(), datetime.min.time()) - timedelta(3)
 
         url = data[2].find("a")['href']
 
         # Only show new job listings
-        if date >= today - timedelta(12):
+        if date >= today:
             jobs.append([company, datetime.strftime(date, "%m/%d/%Y"), url])
 
     # Dispose chrome browser after scraping data
@@ -74,7 +76,8 @@ def main():
     pd.set_option('display.width', 1000)
 
     df = pd.DataFrame(jobs, columns=["Company", "Date", "Link/Email"])
-    print(df)
+    if not df.empty:
+        print(df)
 
 
 if __name__ == '__main__':
