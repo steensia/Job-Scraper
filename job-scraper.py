@@ -4,9 +4,40 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 import pandas as pd
+import sendgrid
+import os
+from sendgrid.helpers.mail import *
+from twilio.rest import Client
 
 
 # TODO: Create class and methods for readability
+def send_email():
+    message = Mail(From('steensia101@gmail.com'),
+                   To('steensia101@gmail.com'),
+                   Subject('Sending with SendGrid is Fun'),
+                   PlainTextContent('and easy to do anywhere, even with Python'))
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=os.environ.get('SENDGRID_API_KEY'))
+        response = sg.client.mail.send.post(request_body=message.get())
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+    except Exception as e:
+        print(e)
+
+
+def send_text():
+    account_sid = os.environ['TWILIO_ACCOUNT_SID']
+    auth_token = os.environ['TWILIO_AUTH_TOKEN']
+    client = Client(account_sid, auth_token)
+
+    message = client.messages \
+        .create(body="Join Earth's mightiest heroes. Like Kevin Bacon.",
+                from_='+13852179269',
+                to='+18019797937')
+
+    print(message.sid)
+
 
 def main():
     URL = 'https://www.levels.fyi/still-hiring/'
@@ -59,7 +90,7 @@ def main():
         year = int(split_date[2]) if len(split_date) > 2 else datetime.today().year
 
         date = datetime(year=year, month=month, day=day)
-        today = datetime.combine(datetime.today(), datetime.min.time()) - timedelta(3)
+        today = datetime.combine(datetime.today(), datetime.min.time()) - timedelta(4)
 
         url = data[2].find("a")['href']
 
@@ -77,6 +108,8 @@ def main():
 
     df = pd.DataFrame(jobs, columns=["Company", "Date", "Link/Email"])
     if not df.empty:
+        # send_email()
+        send_text()
         print(df)
 
 
