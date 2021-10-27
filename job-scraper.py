@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-
 import boto3
 from boto3.dynamodb.conditions import Key
 from selenium import webdriver
@@ -207,11 +206,10 @@ class JobScraper:
         pd.set_option('display.width', 1000)
 
         df = pd.DataFrame(job_list, columns=["Company", "Location", "Date", "Link"])
-        # print(df)
 
         return df
+
 
 if __name__ == '__main__':
     js = JobScraper()
     js.scrape_jobs()
-    #print(job_exists(['Levels.fyi', 'Remote', '10/26/2021', 'https://levelsfyi.notion.site/Levels-fyi-Careers-969edc750f144e8b9fc6a197e0717523?ref=levels.fyi']))
