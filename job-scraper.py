@@ -65,7 +65,7 @@ class JobScraper:
             except:
                 continue
 
-            locations, date, url = row.find_all("td")[1:]
+            locations, date, url = row.find_all("td")[1:10]
 
             locations = self.__parse_locations(locations)
 
