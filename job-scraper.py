@@ -4,6 +4,7 @@ from boto3.dynamodb.conditions import Key
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 import pandas as pd
 import sendgrid
@@ -21,7 +22,10 @@ class JobScraper:
 
         # Initialize main objects
         self.jobs = []
-        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+
+        options = Options()
+        options.headless = True
+        self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
         self.soup = BeautifulSoup(self.filter_website(), "html.parser")
         self.dynamodb = boto3.resource("dynamodb", region_name='us-west-2')
 
