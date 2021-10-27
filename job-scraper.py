@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta
+
+import boto3
+from boto3.dynamodb.conditions import Key
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
@@ -13,7 +16,7 @@ from twilio.rest import Client
 class JobScraper:
     def __init__(self):
         """
-        Initialize job list, Selenium Chrome Driver, and BeautifulSoup objects
+        Initialize job list, Selenium Chrome Driver, BeautifulSoup, and DynamoDB objects
         """
         self.URL = 'https://www.levels.fyi/still-hiring/'
 
@@ -21,6 +24,7 @@ class JobScraper:
         self.jobs = []
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
         self.soup = BeautifulSoup(self.filter_website(), "html.parser")
+        self.dynamodb = boto3.resource("dynamodb", region_name='us-west-2')
 
     def filter_website(self):
         """
@@ -62,27 +66,32 @@ class JobScraper:
             except:
                 continue
 
-            data = row.find_all("td")[1:]
+            locations, date, url = row.find_all("td")[1:]
 
-            locations = self.__parse_locations(data[0].text.strip().split(','))
+            locations = self.__parse_locations(locations)
 
             # Show new job listings in Utah or Remote only
             if not locations:
                 continue
 
             # Parse out date and format to mm/dd/yyyy
-            date = self.__parse_date(data[1].text.strip().split(' '))
+            date = self.__parse_date(date)
 
-            url = data[2].find("a")['href']
+            url = url.find("a")['href']
 
-            # Only show new job listings
-            if self.__is_new(date, days_before_today=0):
-                self.jobs.append([company, ', '.join(locations), datetime.strftime(date, "%m/%d/%Y"), url])
+            job = [company, ', '.join(locations), datetime.strftime(date, "%m/%d/%Y"), url]
+
+            # Only show new job listings and check if it's not in database
+            if self.is_new(date, days_before_today=0) and not self.job_exists(job):
+                self.jobs.append(job)
 
         # Send notifications if there are new jobs available
         if self.jobs:
+            print("{} new job(s) available".format(len(self.jobs)))
             self.send_text()
             self.send_email()
+        else:
+            print("No new jobs available")
 
     def send_email(self):
         """
@@ -119,7 +128,7 @@ class JobScraper:
         except Exception as e:
             print(e)
 
-    def __is_new(self, date, days_before_today):
+    def is_new(self, date, days_before_today):
         """
         Return true if new jobs are available, false otherwise
         :param days_before_today:
@@ -127,8 +136,38 @@ class JobScraper:
         :return:
         """
         today = datetime.combine(datetime.today(), datetime.min.time()) - timedelta(days_before_today)
-
         return date >= today
+
+    def job_exists(self, job):
+        """
+        Check if job already exists in database
+        Return true if exists, otherwise false
+        :param job:
+        :return:
+        """
+        table = self.dynamodb.Table('Jobs')
+
+        company, location, date, link = job
+
+        # Grab job to check if it exists
+        db_jobs = table.query(
+            KeyConditionExpression=Key('company').eq(company)
+        )['Items']
+
+        # Add job if it doesn't exist
+        if not db_jobs:
+            table.put_item(
+                Item={
+                    'company': company,
+                    'location': location,
+                    'date': date,
+                    'link': link
+                }
+            )
+            return False
+        else:
+            return True
+
 
     def __parse_locations(self, locations):
         """
@@ -136,6 +175,7 @@ class JobScraper:
         :param locations:
         :return:
         """
+        locations = locations.text.strip().split(',')
         new_locations = set()
         for location in set(locations):
             if "Remote" in location:
@@ -150,6 +190,7 @@ class JobScraper:
         :param date:
         :return:
         """
+        date = date .text.strip().split(' ')
         month = datetime.strptime(date[0], '%b').month
         day = int(date[1])
         year = int(date[2]) if len(date) > 2 else datetime.today().year
@@ -165,12 +206,12 @@ class JobScraper:
         pd.set_option('display.max_columns', 500)
         pd.set_option('display.width', 1000)
 
-        df = pd.DataFrame(job_list, columns=["Company", "Location(s)", "Date", "Link"])
+        df = pd.DataFrame(job_list, columns=["Company", "Location", "Date", "Link"])
         # print(df)
 
         return df
 
-
 if __name__ == '__main__':
     js = JobScraper()
     js.scrape_jobs()
+    #print(job_exists(['Levels.fyi', 'Remote', '10/26/2021', 'https://levelsfyi.notion.site/Levels-fyi-Careers-969edc750f144e8b9fc6a197e0717523?ref=levels.fyi']))
