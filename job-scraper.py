@@ -102,8 +102,8 @@ class JobScraper:
         """
 
         html = self.display_data(self.jobs).to_html()
-        message = Mail(From("steensia101@gmail.com"),
-                       To("steensia101@gmail.com"),
+        message = Mail(From(os.environ['EMAIL']),
+                       To(os.environ['EMAIL']),
                        Subject("Levels.fyi Job Alerts"),
                        PlainTextContent("Your job alert for Software Engineer"),
                        HtmlContent("<h2>Your job alert for software engineer</h2>" + html))
@@ -125,8 +125,8 @@ class JobScraper:
         try:
             client.messages \
                 .create(body="{} new Software Engineer jobs from Levels.fyi".format(len(self.jobs)),
-                        from_='+13852179269',
-                        to='+18019797937')
+                        from_=os.environ['TWILIO_NUMBER'],
+                        to=os.environ['NUMBER'])
             print("Text sent successfully")
         except Exception as e:
             print(e)
@@ -169,6 +169,14 @@ class JobScraper:
             )
             return False
         else:
+            # Compare date times of existing entries
+            dt = datetime.strptime(date, '%m/%d/%Y')
+            item = db_jobs[0]
+            prev_dt = datetime.strptime(item['date'], '%m/%d/%Y')
+            # Update date column to newer date
+            if dt > prev_dt:
+                item['date'] = date
+                table.put_item(Item=item)
             return True
 
 
