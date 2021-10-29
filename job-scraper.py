@@ -69,23 +69,23 @@ class JobScraper:
             except:
                 continue
 
-            locations, date, url = row.find_all("td")[1:10]
+            locations, date, url = row.find_all("td")[1:]
 
-            locations = self.__parse_locations(locations)
+            locations = self.parse_locations(locations)
 
             # Show new job listings in Utah or Remote only
             if not locations:
                 continue
 
             # Parse out date and format to mm/dd/yyyy
-            date = self.__parse_date(date)
+            date = self.parse_date(date)
 
             url = url.find("a")['href']
 
             job = [company, ', '.join(locations), datetime.strftime(date, "%m/%d/%Y"), url]
 
             # Only show new job listings and check if it's not in database
-            if self.is_new(date, days_before_today=0) and not self.job_exists(job):
+            if self.is_new(date) and not self.job_exists(job):
                 self.jobs.append(job)
 
         # Send notifications if there are new jobs available
@@ -101,7 +101,7 @@ class JobScraper:
         Send email to apply to new job(s)
         """
 
-        html = self.__display_data(self.jobs).to_html()
+        html = self.display_data(self.jobs).to_html()
         message = Mail(From("steensia101@gmail.com"),
                        To("steensia101@gmail.com"),
                        Subject("Levels.fyi Job Alerts"),
@@ -131,14 +131,14 @@ class JobScraper:
         except Exception as e:
             print(e)
 
-    def is_new(self, date, days_before_today):
+    def is_new(self, date, days_before_today=0):
         """
         Return true if new jobs are available, false otherwise
         :param days_before_today:
         :param date:
         :return:
         """
-        today = datetime.combine(datetime.today(), datetime.min.time()) - timedelta(days_before_today)
+        today = datetime.combine(datetime.utcnow() - timedelta(days=days_before_today, hours=6), datetime.min.time())
         return date >= today
 
     def job_exists(self, job):
@@ -172,7 +172,7 @@ class JobScraper:
             return True
 
 
-    def __parse_locations(self, locations):
+    def parse_locations(self, locations):
         """
         Helper function to parse and return locations: Remote/Utah
         :param locations:
@@ -187,7 +187,7 @@ class JobScraper:
                 new_locations.add("Utah")
         return new_locations
 
-    def __parse_date(self, date):
+    def parse_date(self, date):
         """
         Helper function to parse and format date to mm/dd/yyyy
         :param date:
@@ -200,7 +200,7 @@ class JobScraper:
 
         return datetime(year=year, month=month, day=day)
 
-    def __display_data(self, job_list):
+    def display_data(self, job_list):
         """
         Helper function to print out data in a formatted table
         :param job_list:
